@@ -1,0 +1,17 @@
+body {
+    background-color: #f0f0f0;
+}
+.checker-card {
+    max-width: 600px;
+    margin: 40px auto;
+    border-radius: 8px;
+    overflow: hidden;
+}
+input {
+    font-family: monospace;
+    font-size: 16px;
+}
+.result-panel {
+    display: none; /* This hides the result panel until it's needed */
+    border-radius: 4px;
+}
