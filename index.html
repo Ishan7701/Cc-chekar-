@@ -13,51 +13,112 @@
             --success-color: #28a745;
             --danger-color: #dc3545;
             --warning-color: #ffc107;
+            --info-color: #17a2b8;
+            --dark-color: #343a40;
+            --light-color: #f8f9fa;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
         }
 
         body {
             font-family: 'Inter', sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             min-height: 100vh;
-            padding-top: 70px;
+            background-attachment: fixed;
         }
 
         .main-container {
-            padding: 20px;
+            padding-top: 80px;
+            min-height: 100vh;
         }
 
         .sidebar {
             background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255,255,255,0.2);
+            min-height: calc(100vh - 80px);
+            padding: 20px;
+        }
+
+        .main-content {
+            padding: 20px;
+            background: rgba(248, 249, 250, 0.9);
+            min-height: calc(100vh - 80px);
         }
 
         .card {
             border: none;
             border-radius: 15px;
-            margin-bottom: 20px;
-            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            background: rgba(255, 255, 255, 0.95);
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15);
         }
 
         .card-header {
             border-radius: 15px 15px 0 0 !important;
+            font-weight: 600;
         }
 
         .form-control {
             border-radius: 10px;
+            border: 2px solid #e9ecef;
             font-family: 'Courier New', monospace;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
         }
 
         .btn {
             border-radius: 10px;
             font-weight: 600;
+            transition: all 0.3s ease;
+            border: none;
+            padding: 12px 20px;
+        }
+
+        .btn-lg {
+            padding: 15px 25px;
+            font-size: 16px;
+        }
+
+        .btn-success {
+            background: linear-gradient(45deg, var(--success-color), #218838);
+        }
+
+        .btn-warning {
+            background: linear-gradient(45deg, var(--warning-color), #e0a800);
+        }
+
+        .btn-primary {
+            background: linear-gradient(45deg, var(--primary-color), #5a67d8);
         }
 
         .stat-card {
             background: white;
-            border-radius: 10px;
+            border-radius: 12px;
             padding: 15px;
             text-align: center;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease;
             border-top: 4px solid;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
         }
 
         .stat-card.valid { border-top-color: var(--success-color); }
@@ -80,85 +141,199 @@
             font-size: 0.8rem;
             color: #6c757d;
             font-weight: 500;
+            text-transform: uppercase;
+        }
+
+        .results-grid {
+            display: grid;
+            gap: 15px;
+            max-height: 70vh;
+            overflow-y: auto;
+            padding: 10px;
+        }
+
+        .results-grid::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .results-grid::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 10px;
+        }
+
+        .results-grid::-webkit-scrollbar-thumb {
+            background: var(--primary-color);
+            border-radius: 10px;
         }
 
         .result-item {
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 10px;
+            border-radius: 12px;
+            padding: 20px;
             border-left: 5px solid;
             background: white;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            transition: all 0.3s ease;
+            animation: slideIn 0.5s ease;
+        }
+
+        @keyframes slideIn {
+            from { 
+                opacity: 0; 
+                transform: translateX(-20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateX(0); 
+            }
+        }
+
+        .result-item:hover {
+            transform: translateX(5px);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
         }
 
         .result-valid {
             border-left-color: var(--success-color);
-            background: linear-gradient(90deg, #f8fff9 0%, white 100%);
+            background: linear-gradient(90deg, #f0fff4 0%, white 50%);
         }
 
         .result-invalid {
             border-left-color: var(--danger-color);
-            background: linear-gradient(90deg, #fff8f8 0%, white 100%);
+            background: linear-gradient(90deg, #fff0f0 0%, white 50%);
         }
 
         .card-header-main {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 10px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
         }
 
         .card-number {
             font-family: 'Courier New', monospace;
             font-weight: bold;
             font-size: 16px;
+            color: var(--dark-color);
         }
 
         .card-status {
-            padding: 5px 10px;
-            border-radius: 15px;
+            padding: 6px 15px;
+            border-radius: 20px;
             font-weight: bold;
             font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        .status-valid {
+            background: linear-gradient(45deg, var(--success-color), #00a085);
             color: white;
         }
 
-        .status-valid { background: var(--success-color); }
-        .status-invalid { background: var(--danger-color); }
+        .status-invalid {
+            background: linear-gradient(45deg, var(--danger-color), #ff5252);
+            color: white;
+        }
 
         .details-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 8px;
+            gap: 12px;
             font-size: 14px;
         }
 
         .detail-item {
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f8f9fa;
         }
 
         .detail-label {
             font-weight: 600;
             color: #6c757d;
+            min-width: 100px;
         }
 
         .detail-value {
             font-weight: 500;
+            color: var(--dark-color);
+            text-align: right;
         }
 
+        .type-visa { color: #1a1f71; font-weight: bold; }
+        .type-mastercard { color: #eb001b; font-weight: bold; }
+        .type-amex { color: #2e77bb; font-weight: bold; }
+        .type-discover { color: #ff6000; font-weight: bold; }
+        .type-unknown { color: #6c757d; font-weight: bold; }
+
         .progress {
-            height: 10px;
-            border-radius: 5px;
+            border-radius: 10px;
+            background: rgba(0, 0, 0, 0.1);
+            height: 12px;
+        }
+
+        .progress-bar {
+            border-radius: 10px;
+            background: linear-gradient(45deg, var(--primary-color), #5a67d8);
+            transition: width 0.3s ease;
         }
 
         @media (max-width: 768px) {
-            body {
-                padding-top: 60px;
+            .main-container {
+                padding-top: 70px;
+            }
+            
+            .sidebar {
+                min-height: auto;
+                border-right: none;
+                border-bottom: 1px solid #dee2e6;
+            }
+            
+            .results-grid {
+                max-height: 50vh;
+                grid-template-columns: 1fr;
             }
             
             .details-grid {
                 grid-template-columns: 1fr;
             }
+            
+            .card-header-main {
+                flex-direction: column;
+                align-items: start;
+                gap: 10px;
+            }
+            
+            .btn-lg {
+                padding: 12px 20px;
+                font-size: 14px;
+            }
+        }
+
+        @keyframes highlight {
+            0% { background-color: rgba(67, 97, 238, 0.1); }
+            100% { background-color: transparent; }
+        }
+
+        .highlight {
+            animation: highlight 2s ease;
+        }
+
+        .spinner-border {
+            border-width: 3px;
+        }
+
+        .badge {
+            font-size: 0.7em;
+            margin-left: 5px;
+        }
+
+        #exportBtn {
+            border-radius: 8px;
+            font-weight: 600;
         }
     </style>
 </head>
@@ -182,7 +357,7 @@
                     <div class="card-body">
                         <div class="mb-3">
                             <label class="form-label fw-bold">Enter Card Data (CC|Month|Year|CVV):</label>
-                            <textarea id="ccNumbers" class="form-control" rows="12" placeholder="4716325427975915|10|2026|477&#10;5111111111111118|12|2025|123"></textarea>
+                            <textarea id="ccNumbers" class="form-control" rows="12" placeholder="4716325427975915|10|2026|477&#10;5111111111111118|12|2025|123&#10;371449635398431|08|2027|456"></textarea>
                         </div>
 
                         <div class="d-grid gap-2">
@@ -233,12 +408,53 @@
 
             <!-- Main Content -->
             <div class="col-lg-8 main-content">
+                <!-- Header Cards -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="card bg-primary text-white">
+                            <div class="card-body text-center">
+                                <i class="fas fa-credit-card fa-2x mb-2"></i>
+                                <h5 id="totalCards">0</h5>
+                                <small>Total Cards</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-success text-white">
+                            <div class="card-body text-center">
+                                <i class="fas fa-check-circle fa-2x mb-2"></i>
+                                <h5 id="activeCards">0</h5>
+                                <small>Active Cards</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-danger text-white">
+                            <div class="card-body text-center">
+                                <i class="fas fa-times-circle fa-2x mb-2"></i>
+                                <h5 id="deadCards">0</h5>
+                                <small>Dead Cards</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-info text-white">
+                            <div class="card-body text-center">
+                                <i class="fas fa-globe fa-2x mb-2"></i>
+                                <h5 id="countryCount">0</h5>
+                                <small>Countries</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Section -->
                 <div class="card shadow">
                     <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="fas fa-list-alt"></i> Validation Results</h5>
                         <div>
                             <button id="exportBtn" class="btn btn-sm btn-success">
-                                <i class="fas fa-download"></i> Export
+                                <i class="fas fa-download"></i> Export CSV
                             </button>
                         </div>
                     </div>
@@ -250,10 +466,11 @@
                             <div class="progress mt-2">
                                 <div id="progressBar" class="progress-bar" style="width: 0%"></div>
                             </div>
+                            <p id="progressText" class="mt-2">Initializing...</p>
                         </div>
                         
                         <!-- Results -->
-                        <div id="resultsContainer"></div>
+                        <div id="resultsContainer" class="results-grid"></div>
                     </div>
                 </div>
             </div>
