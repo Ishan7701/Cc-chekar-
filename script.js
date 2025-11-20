@@ -1,23 +1,6 @@
-
-// BIN Database (simplified - in real app, use comprehensive BIN database)
-const binDatabase = {
-    '4': { type: 'Visa', country: 'Various' },
-    '51': { type: 'Mastercard', country: 'Various' },
-    '52': { type: 'Mastercard', country: 'Various' },
-    '53': { type: 'Mastercard', country: 'Various' },
-    '54': { type: 'Mastercard', country: 'Various' },
-    '55': { type: 'Mastercard', country: 'Various' },
-    '34': { type: 'American Express', country: 'USA' },
-    '37': { type: 'American Express', country: 'USA' },
-    '36': { type: 'Diners Club', country: 'Various' },
-    '30': { type: 'Diners Club', country: 'Various' },
-    '60': { type: 'Discover', country: 'USA' },
-    '62': { type: 'UnionPay', country: 'China' },
-    '35': { type: 'JCB', country: 'Japan' }
-};
-
-class CCChecker {
+class SmartCCChecker {
     constructor() {
+        this.checkedCards = new Set();
         this.initializeEventListeners();
         this.updateCardCount();
     }
@@ -31,16 +14,31 @@ class CCChecker {
 
     updateCardCount() {
         const textarea = document.getElementById('ccNumbers');
-        const cards = textarea.value.split('\n').filter(card => card.trim().length > 0);
-        document.getElementById('cardCount').textContent = `${cards.length} cards`;
+        const cards = this.parseInput(textarea.value);
+        document.getElementById('cardCount').textContent = `${cards.length} cards loaded`;
+    }
+
+    parseInput(input) {
+        return input.split('\n')
+            .map(line => line.trim())
+            .filter(line => line.length > 0)
+            .map(line => {
+                const parts = line.split('|').map(part => part.trim());
+                return {
+                    number: parts[0] || '',
+                    month: parts[1] || '',
+                    year: parts[2] || '',
+                    cvv: parts[3] || ''
+                };
+            });
     }
 
     checkSingleCard() {
         const textarea = document.getElementById('ccNumbers');
-        const cards = textarea.value.split('\n').filter(card => card.trim().length > 0);
+        const cards = this.parseInput(textarea.value);
         
         if (cards.length === 0) {
-            this.showAlert('Please enter at least one credit card number.', 'warning');
+            this.showAlert('Please enter credit card data in format: CC|Month|Year|CVV', 'warning');
             return;
         }
 
@@ -49,44 +47,52 @@ class CCChecker {
 
     checkBulkCards() {
         const textarea = document.getElementById('ccNumbers');
-        const cards = textarea.value.split('\n')
-            .filter(card => card.trim().length > 0)
-            .slice(0, 100); // Limit to 100 cards
+        const cards = this.parseInput(textarea.value);
 
         if (cards.length === 0) {
-            this.showAlert('Please enter credit card numbers to check.', 'warning');
+            this.showAlert('Please enter credit card data to check.', 'warning');
             return;
         }
 
         this.showLoading(true);
         this.clearResults();
+        this.resetStatistics();
 
-        // Simulate API delay for bulk processing
-        setTimeout(() => {
-            cards.forEach((card, index) => {
-                setTimeout(() => {
-                    this.validateCard(card);
-                    if (index === cards.length - 1) {
+        const totalCards = cards.length;
+        let processed = 0;
+
+        cards.forEach((card, index) => {
+            setTimeout(() => {
+                this.validateCard(card);
+                processed++;
+                
+                // Update progress
+                const progress = (processed / totalCards) * 100;
+                document.getElementById('progressBar').style.width = `${progress}%`;
+                
+                if (processed === totalCards) {
+                    setTimeout(() => {
                         this.showLoading(false);
                         this.updateStatistics();
-                    }
-                }, index * 100); // Stagger requests
-            });
-        }, 500);
+                    }, 500);
+                }
+            }, index * 150);
+        });
     }
 
-    validateCard(cardNumber) {
-        const cleanNumber = cardNumber.replace(/\s/g, '');
+    validateCard(cardData) {
+        const cleanNumber = cardData.number.replace(/\s/g, '');
         
         if (!this.isValidLength(cleanNumber)) {
-            this.displayResult(cleanNumber, false, 'Invalid length');
+            this.displayResult(cardData, false, 'Invalid length');
             return;
         }
 
-        const cardInfo = this.getCardInfo(cleanNumber);
+        const cardInfo = getBINInfo(cleanNumber);
         const isValid = this.luhnCheck(cleanNumber);
+        const status = isValid ? 'ACTIVE' : 'INVALID';
 
-        this.displayResult(cleanNumber, isValid, cardInfo);
+        this.displayResult(cardData, isValid, cardInfo, status);
     }
 
     isValidLength(cardNumber) {
@@ -95,6 +101,8 @@ class CCChecker {
     }
 
     luhnCheck(cardNumber) {
+        if (!cardNumber || cardNumber.length < 13) return false;
+        
         let sum = 0;
         let isEven = false;
 
@@ -115,80 +123,60 @@ class CCChecker {
         return sum % 10 === 0;
     }
 
-    getCardInfo(cardNumber) {
-        // Get BIN information
-        let binInfo = { type: 'Unknown', country: 'Unknown', bank: 'Unknown' };
-
-        // Check BIN patterns
-        for (const [prefix, info] of Object.entries(binDatabase)) {
-            if (cardNumber.startsWith(prefix)) {
-                binInfo = { ...info };
-                break;
-            }
-        }
-
-        // Enhanced country detection based on BIN ranges
-        if (cardNumber.startsWith('4')) {
-            binInfo.country = this.detectVisaCountry(cardNumber);
-        } else if (cardNumber.startsWith('5')) {
-            binInfo.country = this.detectMastercardCountry(cardNumber);
-        }
-
-        return binInfo;
-    }
-
-    detectVisaCountry(cardNumber) {
-        // Simplified country detection - in real app, use comprehensive BIN database
-        const firstSix = parseInt(cardNumber.substring(0, 6));
-        if (firstSix >= 400000 && firstSix <= 499999) {
-            return 'United States';
-        }
-        return 'Various Countries';
-    }
-
-    detectMastercardCountry(cardNumber) {
-        const firstSix = parseInt(cardNumber.substring(0, 6));
-        if (firstSix >= 510000 && firstSix <= 559999) {
-            return 'United States';
-        }
-        return 'Various Countries';
-    }
-
-    displayResult(cardNumber, isValid, cardInfo) {
+    displayResult(cardData, isValid, cardInfo, status) {
         const resultsContainer = document.getElementById('resultsContainer');
-        const formattedNumber = this.formatCardNumber(cardNumber);
+        const formattedNumber = this.formatCardNumber(cardData.number);
         
         const resultCard = document.createElement('div');
         resultCard.className = `result-card fade-in ${isValid ? 'result-valid' : 'result-invalid'}`;
         
+        const typeClass = `type-${cardInfo.type.toLowerCase().replace(' ', '')}`;
+        
         resultCard.innerHTML = `
-            <div class="card-body p-3">
-                <div class="row align-items-center">
-                    <div class="col-md-3">
-                        <strong class="${isValid ? 'text-success' : 'text-danger'}">
-                            ${formattedNumber}
-                        </strong>
-                    </div>
-                    <div class="col-md-2">
-                        <span class="badge ${isValid ? 'bg-success' : 'bg-danger'}">
-                            ${isValid ? 'VALID' : 'INVALID'}
-                        </span>
-                    </div>
-                    <div class="col-md-2">
-                        <small>Type: <strong>${cardInfo.type}</strong></small>
-                    </div>
-                    <div class="col-md-3">
-                        <small>Country: <strong>${cardInfo.country}</strong></small>
-                    </div>
-                    <div class="col-md-2">
-                        <small>Bank: <strong>${cardInfo.bank}</strong></small>
-                    </div>
-                </div>
-                ${!isValid ? '<div class="text-danger mt-1"><small>❌ Failed validation check</small></div>' : ''}
+            <div class="card-header-main">
+                <div class="card-number">${formattedNumber}</div>
+                <span class="card-status ${isValid ? 'status-valid' : 'status-invalid'}">
+                    ${isValid ? '✅ VALID' : '❌ INVALID'}
+                </span>
             </div>
+            
+            <div class="details-grid">
+                <div class="detail-item">
+                    <span class="detail-label">Type:</span>
+                    <span class="detail-value ${typeClass}"><strong>${cardInfo.type}</strong></span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Country:</span>
+                    <span class="detail-value">${cardInfo.country}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Bank:</span>
+                    <span class="detail-value">${cardInfo.bank}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Expiry:</span>
+                    <span class="detail-value">${cardData.month}/${cardData.year}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">CVV:</span>
+                    <span class="detail-value">${cardData.cvv}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">Status:</span>
+                    <span class="detail-value ${isValid ? 'text-success' : 'text-danger'}">
+                        <strong>${status}</strong>
+                    </span>
+                </div>
+            </div>
+            
+            ${!isValid ? 
+                '<div class="mt-2 text-danger"><small>❌ Failed Luhn algorithm validation</small></div>' : 
+                '<div class="mt-2 text-success"><small>✅ Passed all validation checks</small></div>'
+            }
         `;
 
         resultsContainer.appendChild(resultCard);
+        resultsContainer.scrollTop = resultsContainer.scrollHeight;
     }
 
     formatCardNumber(cardNumber) {
@@ -201,13 +189,13 @@ class CCChecker {
 
     clearResults() {
         document.getElementById('resultsContainer').innerHTML = '';
-        this.resetStatistics();
     }
 
     clearAll() {
         document.getElementById('ccNumbers').value = '';
         this.clearResults();
         this.updateCardCount();
+        this.resetStatistics();
         this.showAlert('All fields cleared successfully.', 'info');
     }
 
@@ -248,6 +236,10 @@ class CCChecker {
             'danger': 'alert-danger'
         }[type] || 'alert-info';
 
+        // Remove existing alerts
+        const existingAlerts = document.querySelectorAll('.alert');
+        existingAlerts.forEach(alert => alert.remove());
+
         const alertDiv = document.createElement('div');
         alertDiv.className = `alert ${alertClass} alert-dismissible fade show mt-3`;
         alertDiv.innerHTML = `
@@ -257,7 +249,6 @@ class CCChecker {
 
         document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
 
-        // Auto remove after 5 seconds
         setTimeout(() => {
             if (alertDiv.parentElement) {
                 alertDiv.remove();
@@ -266,22 +257,16 @@ class CCChecker {
     }
 }
 
-// Initialize the application when DOM is loaded
+// Initialize application with sample data
 document.addEventListener('DOMContentLoaded', () => {
-    new CCChecker();
-});
-
-// Add some sample data for testing
-document.addEventListener('DOMContentLoaded', () => {
-    const sampleCards = [
-        '4716325427975915', // Valid Visa
-        '5111111111111118', // Valid Mastercard
-        '371449635398431',  // Valid American Express
-        '4111111111111111', // Valid Visa
-        '1234567890123456', // Invalid
-        '5555555555554444'  // Valid Mastercard
+    const sampleData = [
+        '4716325427975915|10|2026|477',
+        '5111111111111118|12|2025|123',
+        '371449635398431|08|2027|456',
+        '4111111111111111|01|2026|789',
+        '5555555555554444|03|2028|321'
     ].join('\n');
     
-    document.getElementById('ccNumbers').value = sampleCards;
-    new CCChecker().updateCardCount();
+    document.getElementById('ccNumbers').value = sampleData;
+    new SmartCCChecker();
 });
