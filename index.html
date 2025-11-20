@@ -3,25 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CC Checker</title>
-    <link rel="stylesheet" href="w3.css"> <!-- This is the file you downloaded via CMD -->
+    <title>Advanced CC Checker</title>
+    <link rel="stylesheet" href="bootstrap.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="w3-container w3-light-grey">
+<body>
+    <div class="container mt-4">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <!-- Header -->
+                <div class="text-center mb-4">
+                    <h1 class="display-5 text-primary">🛡️ Advanced Credit Card Checker</h1>
+                    <p class="text-muted">Validate multiple credit cards with BIN lookup</p>
+                </div>
 
-    <div class="w3-card-4 w3-white w3-margin-top checker-card">
-        <header class="w3-container w3-blue">
-            <h1><i class="w3-margin-right"></i> Credit Card Checker</h1>
-        </header>
+                <!-- Input Section -->
+                <div class="card shadow-sm mb-4">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">📋 Enter Credit Card Numbers</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Enter card numbers (one per line):</label>
+                            <textarea id="ccNumbers" class="form-control" rows="8" 
+                                      placeholder="4716325427975915&#10;5111111111111118&#10;371449635398431"></textarea>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button id="checkSingle" class="btn btn-success">✅ Check Single Card</button>
+                            <button id="checkBulk" class="btn btn-warning">📊 Check Bulk (50+ Cards)</button>
+                            <button id="clearAll" class="btn btn-outline-danger">🗑️ Clear All</button>
+                            <span class="badge bg-info ms-auto" id="cardCount">0 cards</span>
+                        </div>
+                    </div>
+                </div>
 
-        <div class="w3-container">
-            <p>Enter a credit card number (without spaces) to validate it.</p>
-            <input type="text" id="ccNumber" maxlength="19" placeholder="e.g., 4111111111111111" class="w3-input w3-border w3-round">
-            <button onclick="validateCC()" class="w3-button w3-green w3-margin-top">Check Card</button>
-        </div>
+                <!-- Results Section -->
+                <div class="card shadow-sm">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">📊 Validation Results</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="loading" class="text-center d-none">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p class="mt-2">Checking cards... Please wait</p>
+                        </div>
+                        
+                        <div id="resultsContainer">
+                            <!-- Results will be displayed here -->
+                        </div>
+                    </div>
+                </div>
 
-        <div id="result" class="w3-container w3-panel w3-padding result-panel">
-            <!-- Results will be displayed here by JavaScript -->
+                <!-- Statistics -->
+                <div class="row mt-3 text-center">
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 id="validCount" class="text-success">0</h5>
+                                <small>Valid Cards</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 id="invalidCount" class="text-danger">0</h5>
+                                <small>Invalid Cards</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 id="visaCount" class="text-primary">0</h5>
+                                <small>Visa Cards</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card bg-light">
+                            <div class="card-body">
+                                <h5 id="mastercardCount" class="text-warning">0</h5>
+                                <small>Mastercard</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
