@@ -1,27 +1,53 @@
+// Ultimate CC Checker Pro - Main JavaScript File
 class BinLookupService {
     constructor() {
         this.cache = new Map();
         this.localBINDatabase = {
-            '471632': { country: 'United States', city: 'New York', bank: 'Bank of America', zipCode: '10001' },
-            '511111': { country: 'United States', city: 'Wilmington', bank: 'Citibank', zipCode: '19801' },
-            '371449': { country: 'United States', city: 'New York', bank: 'American Express', zipCode: '10004' },
-            '411111': { country: 'United States', city: 'Wilmington', bank: 'Chase Bank', zipCode: '19801' },
-            '555555': { country: 'United States', city: 'Wilmington', bank: 'Mastercard Bank', zipCode: '19801' },
-            '453211': { country: 'United Kingdom', city: 'London', bank: 'HSBC Bank', zipCode: 'EC2V 7HN' },
-            '542523': { country: 'Germany', city: 'Berlin', bank: 'Deutsche Bank', zipCode: '10117' },
-            '400000': { country: 'United States', city: 'San Francisco', bank: 'Wells Fargo', zipCode: '94105' },
-            '510000': { country: 'United States', city: 'New York', bank: 'Capital One', zipCode: '10001' },
-            '601100': { country: 'United States', city: 'Riverwoods', bank: 'Discover Bank', zipCode: '60015' }
+            // Visa BIN ranges
+            '471632': { country: 'United States', city: 'New York', bank: 'Bank of America', zipCode: '10001', state: 'NY' },
+            '411111': { country: 'United States', city: 'Wilmington', bank: 'Chase Bank', zipCode: '19801', state: 'DE' },
+            '453211': { country: 'United Kingdom', city: 'London', bank: 'HSBC Bank', zipCode: 'EC2V 7HN', state: 'London' },
+            '455633': { country: 'Canada', city: 'Toronto', bank: 'Royal Bank of Canada', zipCode: 'M5J 2T3', state: 'ON' },
+            '491748': { country: 'Australia', city: 'Sydney', bank: 'Commonwealth Bank', zipCode: '2000', state: 'NSW' },
+            
+            // Mastercard BIN ranges
+            '511111': { country: 'United States', city: 'Wilmington', bank: 'Citibank', zipCode: '19801', state: 'DE' },
+            '555555': { country: 'United States', city: 'Wilmington', bank: 'Mastercard Bank', zipCode: '19801', state: 'DE' },
+            '542523': { country: 'Germany', city: 'Berlin', bank: 'Deutsche Bank', zipCode: '10117', state: 'Berlin' },
+            '510000': { country: 'United States', city: 'New York', bank: 'Capital One', zipCode: '10001', state: 'NY' },
+            '552742': { country: 'France', city: 'Paris', bank: 'BNP Paribas', zipCode: '75008', state: 'Paris' },
+            
+            // American Express BIN ranges
+            '371449': { country: 'United States', city: 'New York', bank: 'American Express', zipCode: '10004', state: 'NY' },
+            '343434': { country: 'United States', city: 'New York', bank: 'American Express', zipCode: '10004', state: 'NY' },
+            '376411': { country: 'Mexico', city: 'Mexico City', bank: 'American Express', zipCode: '11510', state: 'CDMX' },
+            
+            // Discover BIN ranges
+            '601100': { country: 'United States', city: 'Riverwoods', bank: 'Discover Bank', zipCode: '60015', state: 'IL' },
+            '601101': { country: 'United States', city: 'Riverwoods', bank: 'Discover Bank', zipCode: '60015', state: 'IL' },
+            
+            // JCB BIN ranges
+            '353011': { country: 'Japan', city: 'Tokyo', bank: 'JCB Co.', zipCode: '105-7117', state: 'Tokyo' },
+            '356999': { country: 'Japan', city: 'Tokyo', bank: 'JCB International', zipCode: '105-7117', state: 'Tokyo' },
+            
+            // UnionPay BIN ranges
+            '625094': { country: 'China', city: 'Beijing', bank: 'China UnionPay', zipCode: '100031', state: 'Beijing' },
+            '628888': { country: 'China', city: 'Beijing', bank: 'China UnionPay', zipCode: '100031', state: 'Beijing' }
         };
     }
 
     getLocalBINData(bin) {
-        for (let length = 6; length >= 4; length--) {
+        if (this.localBINDatabase[bin]) {
+            return this.localBINDatabase[bin];
+        }
+        
+        for (let length = 5; length >= 4; length--) {
             const prefix = bin.substring(0, length);
             if (this.localBINDatabase[prefix]) {
                 return this.localBINDatabase[prefix];
             }
         }
+        
         return null;
     }
 
@@ -30,29 +56,38 @@ class BinLookupService {
             return this.cache.get(bin);
         }
 
-        // Try local database first
         const localData = this.getLocalBINData(bin);
         if (localData) {
             const result = {
                 bin: bin,
                 brand: this.detectBrand(bin),
                 type: 'credit',
-                bank: { name: localData.bank, city: localData.city },
-                country: { name: localData.country, code: this.getCountryCode(localData.country), currency: 'USD' },
+                bank: { 
+                    name: localData.bank, 
+                    city: localData.city,
+                    state: localData.state
+                },
+                country: { 
+                    name: localData.country, 
+                    code: this.getCountryCode(localData.country), 
+                    currency: this.getCurrency(localData.country)
+                },
                 zipCode: localData.zipCode,
-                validated: true
+                validated: true,
+                source: 'local'
             };
             this.cache.set(bin, result);
             return result;
         }
 
-        // Fallback to API
         try {
-            const response = await fetch(`https://lookup.binlist.net/${bin}`, {
+            const response = await this.fetchWithTimeout(`https://lookup.binlist.net/${bin}`, {
+                method: 'GET',
                 headers: {
                     'Accept-Version': '3',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-                }
+                    'User-Agent': 'CC-Checker-App/1.0'
+                },
+                timeout: 5000
             });
 
             if (response.ok) {
@@ -60,12 +95,32 @@ class BinLookupService {
                 const result = this.formatResult(data, bin);
                 this.cache.set(bin, result);
                 return result;
+            } else {
+                throw new Error(`API returned status: ${response.status}`);
             }
         } catch (error) {
             console.warn('BIN API failed:', error);
+            return this.getFallbackInfo(bin);
         }
+    }
 
-        return this.getFallbackInfo(bin);
+    async fetchWithTimeout(url, options = {}) {
+        const { timeout = 5000 } = options;
+        
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        
+        try {
+            const response = await fetch(url, {
+                ...options,
+                signal: controller.signal
+            });
+            clearTimeout(id);
+            return response;
+        } catch (error) {
+            clearTimeout(id);
+            throw error;
+        }
     }
 
     formatResult(data, bin) {
@@ -75,27 +130,32 @@ class BinLookupService {
             type: data.type || 'credit',
             bank: {
                 name: data.bank?.name || 'Unknown Bank',
-                city: data.bank?.city || 'Unknown City'
+                city: data.bank?.city || 'Unknown City',
+                state: data.bank?.state || 'Unknown State'
             },
             country: {
                 name: data.country?.name || 'Unknown Country',
                 code: data.country?.alpha2 || 'XX',
                 currency: data.country?.currency || 'USD'
             },
-            validated: true
+            zipCode: data.bank?.zipCode || 'Unknown',
+            validated: true,
+            source: 'api'
         };
     }
 
     detectBrand(bin) {
         const firstDigit = bin[0];
         const firstTwo = bin.substring(0, 2);
+        const firstFour = bin.substring(0, 4);
 
         if (firstDigit === '4') return 'Visa';
         if (firstTwo >= '51' && firstTwo <= '55') return 'Mastercard';
         if (firstTwo === '34' || firstTwo === '37') return 'American Express';
-        if (bin.startsWith('6011') || firstTwo === '65') return 'Discover';
+        if (firstFour === '6011' || firstTwo === '65') return 'Discover';
         if (firstTwo === '35') return 'JCB';
         if (firstTwo === '62') return 'UnionPay';
+        if (firstTwo === '36' || firstTwo === '38' || firstTwo === '39') return 'Diners Club';
         
         return 'Unknown';
     }
@@ -110,9 +170,36 @@ class BinLookupService {
             'France': 'FR',
             'Japan': 'JP',
             'China': 'CN',
-            'India': 'IN'
+            'India': 'IN',
+            'Mexico': 'MX',
+            'Brazil': 'BR',
+            'Italy': 'IT',
+            'Spain': 'ES',
+            'South Korea': 'KR',
+            'Russia': 'RU'
         };
         return countryCodes[countryName] || 'XX';
+    }
+
+    getCurrency(countryName) {
+        const currencies = {
+            'United States': 'USD',
+            'United Kingdom': 'GBP',
+            'Canada': 'CAD',
+            'Australia': 'AUD',
+            'Germany': 'EUR',
+            'France': 'EUR',
+            'Japan': 'JPY',
+            'China': 'CNY',
+            'India': 'INR',
+            'Mexico': 'MXN',
+            'Brazil': 'BRL',
+            'Italy': 'EUR',
+            'Spain': 'EUR',
+            'South Korea': 'KRW',
+            'Russia': 'RUB'
+        };
+        return currencies[countryName] || 'USD';
     }
 
     getFallbackInfo(bin) {
@@ -120,33 +207,64 @@ class BinLookupService {
         let country = 'Various';
         let bank = 'Various Banks';
         let city = 'Various';
+        let state = 'Various';
+        let zipCode = 'Various';
 
         if (bin.startsWith('4')) {
             country = 'United States';
             bank = 'Visa Member Bank';
             city = 'Various Cities';
+            state = 'Various States';
+            zipCode = 'Various';
         } else if (bin.startsWith('5')) {
             country = 'United States';
             bank = 'Mastercard Member Bank';
             city = 'Various Cities';
+            state = 'Various States';
+            zipCode = 'Various';
         } else if (bin.startsWith('34') || bin.startsWith('37')) {
             country = 'United States';
             bank = 'American Express';
             city = 'New York';
+            state = 'NY';
+            zipCode = '10004';
+        } else if (bin.startsWith('6011') || bin.startsWith('65')) {
+            country = 'United States';
+            bank = 'Discover Bank';
+            city = 'Riverwoods';
+            state = 'IL';
+            zipCode = '60015';
         }
 
         return {
             bin: bin,
             brand: brand,
             type: 'credit',
-            bank: { name: bank, city: city },
-            country: { name: country, code: this.getCountryCode(country), currency: 'USD' },
-            validated: false
+            bank: { 
+                name: bank, 
+                city: city,
+                state: state
+            },
+            country: { 
+                name: country, 
+                code: this.getCountryCode(country), 
+                currency: this.getCurrency(country)
+            },
+            zipCode: zipCode,
+            validated: false,
+            source: 'fallback'
         };
     }
 
     clearCache() {
         this.cache.clear();
+    }
+
+    getCacheStats() {
+        return {
+            size: this.cache.size,
+            localDBSize: Object.keys(this.localBINDatabase).length
+        };
     }
 }
 
@@ -174,7 +292,10 @@ class UltimateCCChecker {
             '4111111111111111|01|2026|789',
             '5555555555554444|03|2028|321',
             '4532112345678901|06|2025|123',
-            '5425234567891234|09|2027|456'
+            '5425234567891234|09|2027|456',
+            '6011000990139424|11|2026|789',
+            '3530111333300000|04|2025|111',
+            '6240008632001145|07|2027|222'
         ].join('\n');
         
         document.getElementById('ccNumbers').value = sampleData;
@@ -183,8 +304,7 @@ class UltimateCCChecker {
 
     updateCardCount() {
         const cards = this.parseInput(document.getElementById('ccNumbers').value);
-        document.getElementById('validCount').textContent = '0';
-        document.getElementById('invalidCount').textContent = '0';
+        document.getElementById('cardCount').textContent = `${cards.length} cards loaded`;
     }
 
     parseInput(input) {
@@ -207,7 +327,7 @@ class UltimateCCChecker {
         const cards = this.parseInput(document.getElementById('ccNumbers').value);
         
         if (cards.length === 0) {
-            alert('Please enter credit card data in format: CC|Month|Year|CVV');
+            this.showAlert('Please enter credit card data in format: CC|Month|Year|CVV', 'warning');
             return;
         }
 
@@ -224,7 +344,7 @@ class UltimateCCChecker {
         const cards = this.parseInput(document.getElementById('ccNumbers').value);
 
         if (cards.length === 0) {
-            alert('Please enter credit card data to check!');
+            this.showAlert('Please enter credit card data to check!', 'warning');
             return;
         }
 
@@ -238,12 +358,13 @@ class UltimateCCChecker {
             await this.validateCard(cards[i]);
             const progress = ((i + 1) / totalCards) * 100;
             document.getElementById('progressBar').style.width = `${progress}%`;
+            document.getElementById('progressText').textContent = `Processing ${i + 1} of ${totalCards} cards...`;
             await this.delay(100);
         }
 
         this.showLoading(false);
         this.updateStatistics();
-        alert(`✅ Successfully processed ${cards.length} cards!`);
+        this.showAlert(`✅ Successfully processed ${cards.length} cards!`, 'success');
     }
 
     async validateCard(cardData) {
@@ -261,20 +382,27 @@ class UltimateCCChecker {
         try {
             const bin = cleanNumber.substring(0, 6);
             
-            // Try local cache first for instant results
             const localData = this.binService.getLocalBINData(bin);
             if (localData) {
                 binInfo = {
                     bin: bin,
                     brand: this.binService.detectBrand(bin),
                     type: 'credit',
-                    bank: { name: localData.bank, city: localData.city },
-                    country: { name: localData.country, code: this.binService.getCountryCode(localData.country), currency: 'USD' },
+                    bank: { 
+                        name: localData.bank, 
+                        city: localData.city,
+                        state: localData.state
+                    },
+                    country: { 
+                        name: localData.country, 
+                        code: this.binService.getCountryCode(localData.country), 
+                        currency: this.binService.getCurrency(localData.country)
+                    },
                     zipCode: localData.zipCode,
-                    validated: true
+                    validated: true,
+                    source: 'local'
                 };
             } else {
-                // Fall back to API lookup
                 binInfo = await this.binService.lookupBIN(bin);
             }
         } catch (error) {
@@ -315,7 +443,7 @@ class UltimateCCChecker {
         const formattedNumber = this.formatCardNumber(cardData.number);
         
         const resultDiv = document.createElement('div');
-        resultDiv.className = `result-item ${isValid ? 'result-valid' : 'result-invalid'}`;
+        resultDiv.className = `result-item ${isValid ? 'result-valid' : 'result-invalid'} highlight`;
         
         resultDiv.innerHTML = `
             <div class="card-header-main">
@@ -330,11 +458,13 @@ class UltimateCCChecker {
             <div class="details-grid">
                 <div class="detail-item">
                     <span class="detail-label">Brand:</span>
-                    <span class="detail-value">${binInfo.brand}</span>
+                    <span class="detail-value type-${binInfo.brand.toLowerCase()}">
+                        ${binInfo.brand}
+                    </span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Type:</span>
-                    <span class="detail-value">${binInfo.type}</span>
+                    <span class="detail-value text-capitalize">${binInfo.type}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Country:</span>
@@ -356,6 +486,12 @@ class UltimateCCChecker {
                     </span>
                 </div>
                 <div class="detail-item">
+                    <span class="detail-label">State:</span>
+                    <span class="detail-value">
+                        <i class="fas fa-map-marker-alt me-1"></i>${binInfo.bank.state}
+                    </span>
+                </div>
+                <div class="detail-item">
                     <span class="detail-label">Expiry:</span>
                     <span class="detail-value">
                         <i class="fas fa-calendar me-1"></i>${cardData.month}/${cardData.year}
@@ -373,14 +509,18 @@ class UltimateCCChecker {
                         <i class="fas fa-money-bill me-1"></i>${binInfo.country.currency}
                     </span>
                 </div>
-                ${binInfo.zipCode ? `
                 <div class="detail-item">
                     <span class="detail-label">Zip Code:</span>
                     <span class="detail-value">
                         <i class="fas fa-map-pin me-1"></i>${binInfo.zipCode}
                     </span>
                 </div>
-                ` : ''}
+                <div class="detail-item">
+                    <span class="detail-label">Data Source:</span>
+                    <span class="detail-value">
+                        <i class="fas fa-database me-1"></i>${binInfo.source.toUpperCase()}
+                    </span>
+                </div>
             </div>
             
             <div class="mt-2 p-2 rounded ${isValid ? 'bg-success bg-opacity-10' : 'bg-danger bg-opacity-10'}">
@@ -410,6 +550,7 @@ class UltimateCCChecker {
         document.getElementById('loading').classList.toggle('d-none', !show);
         if (show) {
             document.getElementById('progressBar').style.width = '0%';
+            document.getElementById('progressText').textContent = 'Initializing...';
         }
     }
 
@@ -424,7 +565,7 @@ class UltimateCCChecker {
         this.updateCardCount();
         this.resetStatistics();
         this.binService.clearCache();
-        alert('🗑️ All fields cleared successfully!');
+        this.showAlert('🗑️ All fields cleared successfully!', 'info');
     }
 
     resetStatistics() {
@@ -432,6 +573,10 @@ class UltimateCCChecker {
         document.getElementById('invalidCount').textContent = '0';
         document.getElementById('visaCount').textContent = '0';
         document.getElementById('mastercardCount').textContent = '0';
+        document.getElementById('activeCards').textContent = '0';
+        document.getElementById('deadCards').textContent = '0';
+        document.getElementById('countryCount').textContent = '0';
+        document.getElementById('totalCards').textContent = '0';
     }
 
     updateStatistics() {
@@ -454,16 +599,22 @@ class UltimateCCChecker {
         document.getElementById('invalidCount').textContent = invalidCount;
         document.getElementById('visaCount').textContent = visaCount;
         document.getElementById('mastercardCount').textContent = mastercardCount;
+        document.getElementById('activeCards').textContent = validCount;
+        document.getElementById('deadCards').textContent = invalidCount;
+        document.getElementById('countryCount').textContent = this.countries.size;
+        
+        const cards = this.parseInput(document.getElementById('ccNumbers').value);
+        document.getElementById('totalCards').textContent = cards.length;
     }
 
     exportToCSV() {
         const results = document.querySelectorAll('.result-item');
         if (results.length === 0) {
-            alert('No results to export!');
+            this.showAlert('No results to export!', 'warning');
             return;
         }
 
-        let csv = 'Card Number,Brand,Type,Country,City,Bank,Expiry,CVV,Status,Currency,Zip Code\n';
+        let csv = 'Card Number,Brand,Type,Country,City,State,Bank,Expiry,CVV,Status,Currency,Zip Code,Data Source\n';
         
         results.forEach(result => {
             const cardNumber = result.querySelector('.card-number').textContent.replace(/[^\d]/g, '');
@@ -478,13 +629,15 @@ class UltimateCCChecker {
             const country = getDetailValue(2).split(' ')[0]; // Remove flag emoji
             const bank = getDetailValue(3);
             const city = getDetailValue(4);
-            const expiry = getDetailValue(5);
-            const cvv = getDetailValue(6);
-            const currency = getDetailValue(7);
-            const zipCode = details[8] ? details[8].querySelector('.detail-value').textContent.trim() : 'N/A';
+            const state = getDetailValue(5);
+            const expiry = getDetailValue(6);
+            const cvv = getDetailValue(7);
+            const currency = getDetailValue(8);
+            const zipCode = getDetailValue(9);
+            const dataSource = getDetailValue(10);
             const status = result.classList.contains('result-valid') ? 'ACTIVE' : 'INVALID';
 
-            csv += `"${cardNumber}","${brand}","${type}","${country}","${city}","${bank}","${expiry}","${cvv}","${status}","${currency}","${zipCode}"\n`;
+            csv += `"${cardNumber}","${brand}","${type}","${country}","${city}","${state}","${bank}","${expiry}","${cvv}","${status}","${currency}","${zipCode}","${dataSource}"\n`;
         });
 
         const blob = new Blob([csv], { type: 'text/csv' });
@@ -497,7 +650,35 @@ class UltimateCCChecker {
         document.body.removeChild(a);
         window.URL.revokeObjectURL(url);
         
-        alert('📥 CSV exported successfully!');
+        this.showAlert('📥 CSV exported successfully!', 'success');
+    }
+
+    showAlert(message, type) {
+        const alertClass = {
+            'success': 'alert-success',
+            'warning': 'alert-warning',
+            'info': 'alert-info',
+            'danger': 'alert-danger'
+        }[type] || 'alert-info';
+
+        const existingAlerts = document.querySelectorAll('.alert');
+        existingAlerts.forEach(alert => alert.remove());
+
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert ${alertClass} alert-dismissible fade show position-fixed top-0 start-50 translate-middle-x mt-5`;
+        alertDiv.style.zIndex = '9999';
+        alertDiv.innerHTML = `
+            <strong>${type.toUpperCase()}:</strong> ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+
+        document.body.appendChild(alertDiv);
+
+        setTimeout(() => {
+            if (alertDiv.parentElement) {
+                alertDiv.remove();
+            }
+        }, 5000);
     }
 
     delay(ms) {
@@ -505,7 +686,7 @@ class UltimateCCChecker {
     }
 }
 
-// Initialize the application when page loads
+// Initialize application when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     window.ccChecker = new UltimateCCChecker();
 });
