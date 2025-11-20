@@ -1,17 +1,79 @@
 body {
-    background-color: #f0f0f0;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
-.checker-card {
-    max-width: 600px;
-    margin: 40px auto;
+
+.card {
+    border: none;
+    border-radius: 15px;
+}
+
+.card-header {
+    border-radius: 15px 15px 0 0 !important;
+}
+
+.form-control {
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s;
+}
+
+.form-control:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.btn {
     border-radius: 8px;
-    overflow: hidden;
+    font-weight: 600;
+    transition: all 0.3s;
 }
-input {
-    font-family: monospace;
-    font-size: 16px;
+
+/* Result Cards */
+.result-card {
+    border-left: 4px solid;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    transition: transform 0.2s;
 }
-.result-panel {
-    display: none; /* This hides the result panel until it's needed */
-    border-radius: 4px;
+
+.result-card:hover {
+    transform: translateX(5px);
+}
+
+.result-valid {
+    border-left-color: #28a745;
+    background: linear-gradient(90deg, #f8fff9 0%, #ffffff 100%);
+}
+
+.result-invalid {
+    border-left-color: #dc3545;
+    background: linear-gradient(90deg, #fff8f8 0%, #ffffff 100%);
+}
+
+/* Badge styles */
+.badge {
+    font-size: 0.7em;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .container {
+        padding: 10px;
+    }
+    
+    .display-5 {
+        font-size: 1.8rem;
+    }
+}
+
+/* Animation for new results */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
 }
