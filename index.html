@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CC Checker</title>
+    <link rel="stylesheet" href="w3.css"> <!-- This is the file you downloaded via CMD -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="w3-container w3-light-grey">
+
+    <div class="w3-card-4 w3-white w3-margin-top checker-card">
+        <header class="w3-container w3-blue">
+            <h1><i class="w3-margin-right"></i> Credit Card Checker</h1>
+        </header>
+
+        <div class="w3-container">
+            <p>Enter a credit card number (without spaces) to validate it.</p>
+            <input type="text" id="ccNumber" maxlength="19" placeholder="e.g., 4111111111111111" class="w3-input w3-border w3-round">
+            <button onclick="validateCC()" class="w3-button w3-green w3-margin-top">Check Card</button>
+        </div>
+
+        <div id="result" class="w3-container w3-panel w3-padding result-panel">
+            <!-- Results will be displayed here by JavaScript -->
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
