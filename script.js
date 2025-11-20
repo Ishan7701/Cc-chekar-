@@ -1,21 +1,36 @@
-class SmartCCChecker {
+class UltimateCCChecker {
     constructor() {
-        this.checkedCards = new Set();
+        this.binService = window.binService;
+        this.countries = new Set();
         this.initializeEventListeners();
-        this.updateCardCount();
+        this.loadSampleData();
     }
 
     initializeEventListeners() {
         document.getElementById('checkSingle').addEventListener('click', () => this.checkSingleCard());
         document.getElementById('checkBulk').addEventListener('click', () => this.checkBulkCards());
         document.getElementById('clearAll').addEventListener('click', () => this.clearAll());
+        document.getElementById('exportBtn').addEventListener('click', () => this.exportToCSV());
         document.getElementById('ccNumbers').addEventListener('input', () => this.updateCardCount());
     }
 
+    loadSampleData() {
+        const sampleData = [
+            '4716325427975915|10|2026|477',
+            '5111111111111118|12|2025|123',
+            '371449635398431|08|2027|456',
+            '4111111111111111|01|2026|789',
+            '5555555555554444|03|2028|321'
+        ].join('\n');
+        
+        document.getElementById('ccNumbers').value = sampleData;
+        this.updateCardCount();
+    }
+
     updateCardCount() {
-        const textarea = document.getElementById('ccNumbers');
-        const cards = this.parseInput(textarea.value);
-        document.getElementById('cardCount').textContent = `${cards.length} cards loaded`;
+        const cards = this.parseInput(document.getElementById('ccNumbers').value);
+        document.getElementById('validCount').textContent = '0';
+        document.getElementById('invalidCount').textContent = '0';
     }
 
     parseInput(input) {
@@ -33,24 +48,28 @@ class SmartCCChecker {
             });
     }
 
-    checkSingleCard() {
-        const textarea = document.getElementById('ccNumbers');
-        const cards = this.parseInput(textarea.value);
+    async checkSingleCard() {
+        const cards = this.parseInput(document.getElementById('ccNumbers').value);
         
         if (cards.length === 0) {
-            this.showAlert('Please enter credit card data in format: CC|Month|Year|CVV', 'warning');
+            alert('Please enter credit card data!');
             return;
         }
 
-        this.validateCard(cards[0]);
+        this.showLoading(true);
+        try {
+            await this.validateCard(cards[0]);
+        } finally {
+            this.showLoading(false);
+            this.updateStatistics();
+        }
     }
 
-    checkBulkCards() {
-        const textarea = document.getElementById('ccNumbers');
-        const cards = this.parseInput(textarea.value);
+    async checkBulkCards() {
+        const cards = this.parseInput(document.getElementById('ccNumbers').value);
 
         if (cards.length === 0) {
-            this.showAlert('Please enter credit card data to check.', 'warning');
+            alert('Please enter credit card data!');
             return;
         }
 
@@ -59,40 +78,43 @@ class SmartCCChecker {
         this.resetStatistics();
 
         const totalCards = cards.length;
-        let processed = 0;
+        
+        for (let i = 0; i < cards.length; i++) {
+            await this.validateCard(cards[i]);
+            const progress = ((i + 1) / totalCards) * 100;
+            document.getElementById('progressBar').style.width = `${progress}%`;
+            await this.delay(100);
+        }
 
-        cards.forEach((card, index) => {
-            setTimeout(() => {
-                this.validateCard(card);
-                processed++;
-                
-                // Update progress
-                const progress = (processed / totalCards) * 100;
-                document.getElementById('progressBar').style.width = `${progress}%`;
-                
-                if (processed === totalCards) {
-                    setTimeout(() => {
-                        this.showLoading(false);
-                        this.updateStatistics();
-                    }, 500);
-                }
-            }, index * 150);
-        });
+        this.showLoading(false);
+        this.updateStatistics();
+        alert(`Processed ${cards.length} cards successfully!`);
     }
 
-    validateCard(cardData) {
+    async validateCard(cardData) {
         const cleanNumber = cardData.number.replace(/\s/g, '');
         
         if (!this.isValidLength(cleanNumber)) {
-            this.displayResult(cardData, false, 'Invalid length');
+            this.displayResult(cardData, false, await this.getFallbackInfo(cleanNumber), 'INVALID');
             return;
         }
 
-        const cardInfo = getBINInfo(cleanNumber);
         const isValid = this.luhnCheck(cleanNumber);
-        const status = isValid ? 'ACTIVE' : 'INVALID';
+        let binInfo;
 
-        this.displayResult(cardData, isValid, cardInfo, status);
+        try {
+            const bin = cleanNumber.substring(0, 6);
+            binInfo = await this.binService.lookupBIN(bin);
+        } catch (error) {
+            binInfo = await this.getFallbackInfo(cleanNumber);
+        }
+
+        this.displayResult(cardData, isValid, binInfo, isValid ? 'ACTIVE' : 'INVALID');
+    }
+
+    async getFallbackInfo(cardNumber) {
+        const bin = cardNumber.substring(0, 6);
+        return this.binService.getFallbackInfo(bin);
     }
 
     isValidLength(cardNumber) {
@@ -111,9 +133,7 @@ class SmartCCChecker {
 
             if (isEven) {
                 digit *= 2;
-                if (digit > 9) {
-                    digit -= 9;
-                }
+                if (digit > 9) digit -= 9;
             }
 
             sum += digit;
@@ -123,35 +143,41 @@ class SmartCCChecker {
         return sum % 10 === 0;
     }
 
-    displayResult(cardData, isValid, cardInfo, status) {
+    displayResult(cardData, isValid, binInfo, status) {
         const resultsContainer = document.getElementById('resultsContainer');
         const formattedNumber = this.formatCardNumber(cardData.number);
         
-        const resultCard = document.createElement('div');
-        resultCard.className = `result-card fade-in ${isValid ? 'result-valid' : 'result-invalid'}`;
+        const resultDiv = document.createElement('div');
+        resultDiv.className = `result-item ${isValid ? 'result-valid' : 'result-invalid'}`;
         
-        const typeClass = `type-${cardInfo.type.toLowerCase().replace(' ', '')}`;
-        
-        resultCard.innerHTML = `
+        resultDiv.innerHTML = `
             <div class="card-header-main">
                 <div class="card-number">${formattedNumber}</div>
                 <span class="card-status ${isValid ? 'status-valid' : 'status-invalid'}">
-                    ${isValid ? '✅ VALID' : '❌ INVALID'}
+                    ${isValid ? '✅ ACTIVE' : '❌ INVALID'}
                 </span>
             </div>
             
             <div class="details-grid">
                 <div class="detail-item">
+                    <span class="detail-label">Brand:</span>
+                    <span class="detail-value">${binInfo.brand}</span>
+                </div>
+                <div class="detail-item">
                     <span class="detail-label">Type:</span>
-                    <span class="detail-value ${typeClass}"><strong>${cardInfo.type}</strong></span>
+                    <span class="detail-value">${binInfo.type}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Country:</span>
-                    <span class="detail-value">${cardInfo.country}</span>
+                    <span class="detail-value">${binInfo.country.name}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Bank:</span>
-                    <span class="detail-value">${cardInfo.bank}</span>
+                    <span class="detail-value">${binInfo.bank.name}</span>
+                </div>
+                <div class="detail-item">
+                    <span class="detail-label">City:</span>
+                    <span class="detail-value">${binInfo.bank.city}</span>
                 </div>
                 <div class="detail-item">
                     <span class="detail-label">Expiry:</span>
@@ -162,21 +188,24 @@ class SmartCCChecker {
                     <span class="detail-value">${cardData.cvv}</span>
                 </div>
                 <div class="detail-item">
-                    <span class="detail-label">Status:</span>
-                    <span class="detail-value ${isValid ? 'text-success' : 'text-danger'}">
-                        <strong>${status}</strong>
-                    </span>
+                    <span class="detail-label">Currency:</span>
+                    <span class="detail-value">${binInfo.country.currency}</span>
                 </div>
             </div>
             
-            ${!isValid ? 
-                '<div class="mt-2 text-danger"><small>❌ Failed Luhn algorithm validation</small></div>' : 
-                '<div class="mt-2 text-success"><small>✅ Passed all validation checks</small></div>'
-            }
+            <div class="mt-2 ${isValid ? 'text-success' : 'text-danger'}">
+                <small>
+                    <i class="fas ${isValid ? 'fa-check-circle' : 'fa-exclamation-triangle'}"></i>
+                    ${isValid ? 'Card passed all validation checks' : 'Card failed validation'}
+                </small>
+            </div>
         `;
 
-        resultsContainer.appendChild(resultCard);
-        resultsContainer.scrollTop = resultsContainer.scrollHeight;
+        resultsContainer.appendChild(resultDiv);
+
+        if (binInfo.country.name !== 'Unknown Country') {
+            this.countries.add(binInfo.country.name);
+        }
     }
 
     formatCardNumber(cardNumber) {
@@ -189,6 +218,7 @@ class SmartCCChecker {
 
     clearResults() {
         document.getElementById('resultsContainer').innerHTML = '';
+        this.countries.clear();
     }
 
     clearAll() {
@@ -196,7 +226,8 @@ class SmartCCChecker {
         this.clearResults();
         this.updateCardCount();
         this.resetStatistics();
-        this.showAlert('All fields cleared successfully.', 'info');
+        this.binService.clearCache();
+        alert('All fields cleared!');
     }
 
     resetStatistics() {
@@ -207,7 +238,7 @@ class SmartCCChecker {
     }
 
     updateStatistics() {
-        const results = document.querySelectorAll('.result-card');
+        const results = document.querySelectorAll('.result-item');
         let validCount = 0;
         let invalidCount = 0;
         let visaCount = 0;
@@ -228,45 +259,47 @@ class SmartCCChecker {
         document.getElementById('mastercardCount').textContent = mastercardCount;
     }
 
-    showAlert(message, type) {
-        const alertClass = {
-            'success': 'alert-success',
-            'warning': 'alert-warning',
-            'info': 'alert-info',
-            'danger': 'alert-danger'
-        }[type] || 'alert-info';
+    exportToCSV() {
+        const results = document.querySelectorAll('.result-item');
+        if (results.length === 0) {
+            alert('No results to export!');
+            return;
+        }
 
-        // Remove existing alerts
-        const existingAlerts = document.querySelectorAll('.alert');
-        existingAlerts.forEach(alert => alert.remove());
+        let csv = 'Card Number,Brand,Type,Country,City,Bank,Expiry,CVV,Status,Currency\n';
+        
+        results.forEach(result => {
+            const cardNumber = result.querySelector('.card-number').textContent.replace(/\s/g, '');
+            const details = result.querySelectorAll('.detail-item');
+            
+            const brand = details[0].querySelector('.detail-value').textContent;
+            const type = details[1].querySelector('.detail-value').textContent;
+            const country = details[2].querySelector('.detail-value').textContent;
+            const bank = details[3].querySelector('.detail-value').textContent;
+            const city = details[4].querySelector('.detail-value').textContent;
+            const expiry = details[5].querySelector('.detail-value').textContent;
+            const cvv = details[6].querySelector('.detail-value').textContent;
+            const currency = details[7].querySelector('.detail-value').textContent;
+            const status = result.classList.contains('result-valid') ? 'ACTIVE' : 'INVALID';
 
-        const alertDiv = document.createElement('div');
-        alertDiv.className = `alert ${alertClass} alert-dismissible fade show mt-3`;
-        alertDiv.innerHTML = `
-            ${message}
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        `;
+            csv += `"${cardNumber}","${brand}","${type}","${country}","${city}","${bank}","${expiry}","${cvv}","${status}","${currency}"\n`;
+        });
 
-        document.querySelector('.container').insertBefore(alertDiv, document.querySelector('.container').firstChild);
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cc-results-${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+        
+        alert('CSV exported successfully!');
+    }
 
-        setTimeout(() => {
-            if (alertDiv.parentElement) {
-                alertDiv.remove();
-            }
-        }, 5000);
+    delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
     }
 }
 
-// Initialize application with sample data
 document.addEventListener('DOMContentLoaded', () => {
-    const sampleData = [
-        '4716325427975915|10|2026|477',
-        '5111111111111118|12|2025|123',
-        '371449635398431|08|2027|456',
-        '4111111111111111|01|2026|789',
-        '5555555555554444|03|2028|321'
-    ].join('\n');
-    
-    document.getElementById('ccNumbers').value = sampleData;
-    new SmartCCChecker();
+    window.ccChecker = new UltimateCCChecker();
 });
