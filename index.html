@@ -3,90 +3,109 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced CC Checker</title>
+    <title>🔍 Smart CC Checker Pro</title>
     <link rel="stylesheet" href="bootstrap.css">
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="container mt-4">
-        <div class="row justify-content-center">
-            <div class="col-lg-10">
-                <!-- Header -->
-                <div class="text-center mb-4">
-                    <h1 class="display-5 text-primary">🛡️ Advanced Credit Card Checker</h1>
-                    <p class="text-muted">Validate multiple credit cards with BIN lookup</p>
+    <div class="container-fluid">
+        <!-- Header -->
+        <nav class="navbar navbar-dark bg-gradient-primary">
+            <div class="container">
+                <span class="navbar-brand mb-0 h1">
+                    <i class="fas fa-shield-alt"></i> 🔍 Smart CC Checker Pro
+                </span>
+                <div class="navbar-text">
+                    <small>Advanced Card Validation System</small>
+                </div>
+            </div>
+        </nav>
+
+        <div class="container mt-4">
+            <div class="row">
+                <!-- Left Side - Input Panel -->
+                <div class="col-lg-6">
+                    <div class="card shadow-deep">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">📥 Input Card Data</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">Enter card data (Format: CC|Month|Year|CVV):</label>
+                                <textarea id="ccNumbers" class="form-control input-field" rows="12" 
+placeholder="4716325427975915|10|2026|477&#10;5111111111111118|12|2025|123&#10;371449635398431|08|2027|456"></textarea>
+                            </div>
+                            
+                            <div class="d-grid gap-2 d-md-flex justify-content-md-between">
+                                <button id="checkSingle" class="btn btn-success btn-lg">
+                                    <i class="fas fa-check"></i> Check Single
+                                </button>
+                                <button id="checkBulk" class="btn btn-warning btn-lg">
+                                    <i class="fas fa-bolt"></i> Check Bulk (50+)
+                                </button>
+                                <button id="clearAll" class="btn btn-outline-danger">
+                                    <i class="fas fa-trash"></i> Clear
+                                </button>
+                            </div>
+                            
+                            <div class="mt-3 text-center">
+                                <span class="badge bg-info fs-6" id="cardCount">0 cards loaded</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="row mt-3 text-center">
+                        <div class="col-md-3">
+                            <div class="stat-card valid">
+                                <div class="stat-number" id="validCount">0</div>
+                                <div class="stat-label">Valid</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card invalid">
+                                <div class="stat-number" id="invalidCount">0</div>
+                                <div class="stat-label">Invalid</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card visa">
+                                <div class="stat-number" id="visaCount">0</div>
+                                <div class="stat-label">Visa</div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="stat-card mastercard">
+                                <div class="stat-number" id="mastercardCount">0</div>
+                                <div class="stat-label">Mastercard</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
-                <!-- Input Section -->
-                <div class="card shadow-sm mb-4">
-                    <div class="card-header bg-primary text-white">
-                        <h5 class="mb-0">📋 Enter Credit Card Numbers</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="mb-3">
-                            <label class="form-label">Enter card numbers (one per line):</label>
-                            <textarea id="ccNumbers" class="form-control" rows="8" 
-                                      placeholder="4716325427975915&#10;5111111111111118&#10;371449635398431"></textarea>
+                <!-- Right Side - Results Panel -->
+                <div class="col-lg-6">
+                    <div class="card shadow-deep">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">📊 Validation Results</h5>
                         </div>
-                        <div class="d-flex gap-2 flex-wrap">
-                            <button id="checkSingle" class="btn btn-success">✅ Check Single Card</button>
-                            <button id="checkBulk" class="btn btn-warning">📊 Check Bulk (50+ Cards)</button>
-                            <button id="clearAll" class="btn btn-outline-danger">🗑️ Clear All</button>
-                            <span class="badge bg-info ms-auto" id="cardCount">0 cards</span>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Results Section -->
-                <div class="card shadow-sm">
-                    <div class="card-header bg-success text-white">
-                        <h5 class="mb-0">📊 Validation Results</h5>
-                    </div>
-                    <div class="card-body">
-                        <div id="loading" class="text-center d-none">
-                            <div class="spinner-border text-primary" role="status">
-                                <span class="visually-hidden">Loading...</span>
+                        <div class="card-body">
+                            <!-- Loading Indicator -->
+                            <div id="loading" class="text-center d-none">
+                                <div class="spinner-border text-primary" style="width: 3rem; height: 3rem;" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <p class="mt-3 fs-5">🔍 Scanning cards... Please wait</p>
+                                <div class="progress mt-2" style="height: 10px;">
+                                    <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                         style="width: 0%"></div>
+                                </div>
                             </div>
-                            <p class="mt-2">Checking cards... Please wait</p>
-                        </div>
-                        
-                        <div id="resultsContainer">
-                            <!-- Results will be displayed here -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Statistics -->
-                <div class="row mt-3 text-center">
-                    <div class="col-md-3">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <h5 id="validCount" class="text-success">0</h5>
-                                <small>Valid Cards</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <h5 id="invalidCount" class="text-danger">0</h5>
-                                <small>Invalid Cards</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <h5 id="visaCount" class="text-primary">0</h5>
-                                <small>Visa Cards</small>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="card bg-light">
-                            <div class="card-body">
-                                <h5 id="mastercardCount" class="text-warning">0</h5>
-                                <small>Mastercard</small>
+                            
+                            <!-- Results Container -->
+                            <div id="resultsContainer" class="results-grid">
+                                <!-- Results will appear here -->
                             </div>
                         </div>
                     </div>
@@ -95,6 +114,7 @@
         </div>
     </div>
 
+    <script src="bin-database.js"></script>
     <script src="script.js"></script>
 </body>
 </html>
